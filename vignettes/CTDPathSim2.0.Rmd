@@ -1,0 +1,237 @@
+---
+title: "CTDPathSim2.0 Vignette"
+author: "By Banabithi Bose"
+date: "4/10/2022"
+output:      
+    BiocStyle::html_document:
+        toc: true
+        toc_depth: 3  
+        number_sections: true
+        theme: united 
+r_packages: rmarkdown
+vignette: > 
+    %\VignetteIndexEntry{CTDPathSim2.0} 
+    %\VignetteEngine{knitr::rmarkdown} 
+    %\VignetteEncoding[UTF-8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# <a id = "Introduction"></a> Introduction
+CTDPathSim2.0 is a computational tool which utilizes a pathway activity-based approach to compute similarity scores between primary tumor samples and cell lines. CTDPathSim2.0 integrates DNA methylation, gene expression and copy number variation datasets. The package is able to run without copy number variation to produce the results based on previous version of the tool, CTDPathSim1.0. CTDPathSim2.0 has five main computational steps:
+
+Step 1:Computing sample-specific deconvoluted DNA methylation profile
+ 
+Step 2:Computing sample-specific deconvoluted expression profile
+
+Step 3:Computing sample and cell line-specific differentially expressed (DE) genes and enriched biological pathways
+
+Step 4:Computing sample and cell line-specific differentially methylated (DM) and differentially aberrated (DA) genes
+
+Step 5:Computing sample-cell line pathway activity-based similarity score
+
+```{r}
+library(CTDPathSim2.0)
+library(printr)
+data("CTDPathSim2")
+```
+# <a id = "Example-Data-Sets-of CTDPathSim2.0"> </a> Example Data Sets
+## <a id = "Methylation.Sample"> </a> Methylation.Sample
+```{r}
+knitr::kable(Methylation.Sample[1:5,1:3], digits = 2, caption = 'Probe-centric DNA methylation values of the tumor samples.')
+```
+## <a id = "Reference.Methylation.Markers"> </a> Reference.Methylation.Markers
+```{r}
+knitr::kable(Reference.Methylation.Markers[1:5], caption = 'The marker loci (probes) of reference cell types.')
+```
+## <a id = "Reference.Methylation.CellTypes"> </a> Reference.Methylation.CellTypes
+```{r}
+knitr::kable(Reference.Methylation.CellTypes[1:3,1:3], caption = 'R dataframe for the DNA methylation values for the reference cell types and the probes.')
+```
+## <a id = "Annotation27K"> </a> Annotation27K
+```{r}
+knitr::kable(Annotation27K[1:3,], caption = 'An R dataframe object with probe, symbol and synonym columns of 27K DNA methylation data annotation.')
+```
+## <a id = "Annotation450K"> </a> Annotation450K
+```{r}
+knitr::kable(Annotation450K[c(6,7,10),], caption = 'An R dataframe object with probe ID, UCSC_REFGENE_NAME and UCSC_REFGENE_GROUP columns 450K DNA methylation data annotation.')
+```
+## <a id = "Expression.Sample"> </a> Expression.Sample
+```{r}
+knitr::kable(Expression.Sample[1:5,1:3], caption = 'An R dataframe for the gene-centric gene expression (RNASeq) values of the tumor samples.')
+```
+## <a id = "Expression.CellLine"> </a> Expression.CellLine
+```{r}
+knitr::kable(Expression.CellLine[1:5,1:3], caption = 'An R dataframe for the gene-centric gene expression (RNASeq) values of the cell lines.')
+```
+## <a id = "CancerGeneList"> </a> CancerGeneList
+```{r}
+knitr::kable(CancerGeneList[1:5,], caption = 'An R dataframe object with a column of frequently mutated cancer driver genes.')
+```
+## <a id = "GeneCentric.DNAmethylation.Sample"> </a> GeneCentric.DNAmethylation.Sample
+```{r}
+knitr::kable(GeneCentric.DNAmethylation.Sample[1:5,1:3], caption = 'An R dataframe with gene-centric DNA methylation beta values of bulk tumor samples. Rows are the genes, columns are the tumor samples.')
+```
+## <a id = "GeneCentric.DNAmethylation.CellLine"> </a> GeneCentric.DNAmethylation.CellLine
+```{r}
+knitr::kable(GeneCentric.DNAmethylation.CellLine[1:5,1:3], caption = 'An R dataframe with gene-centric DNA methylation beta values of cell lines. Rows are the genes, columns are the cell lines.')
+```
+## <a id = "CNV.CellLine"> </a> CNV.CellLine
+```{r}
+knitr::kable(CNV.CellLine[1:5,1:3], caption = 'An R dataframe with gene-centric copy number values of cell lines. Rows are the genes, columns are the cell lines.')
+```
+
+# <a id = "CTDPathSim2.0-Functions"> </a> CTDPathsim2.0 Functions
+## <a id = "Step-1"> </a> Step 1: Computing sample-specific deconvoluted methylation profile.
+
+### <a id = "Run-DeconvMethylFun"> </a> Function1: RunDeconvMethylFun
+```{r}
+?RunDeconvMethylFun
+```
+```{r results = "hide"}
+# Running the function
+stage1_result_ct <-
+  RunDeconvMethylFun(Methylation.Sample,Reference.Methylation.Markers)
+```
+```{r}
+# Outputs
+knitr::kable(stage1_result_ct$methylation[1:5,], caption = 'Estimated DNA methylation profile of constituent cell types.')
+knitr::kable(stage1_result_ct$proportions[1:5,], caption = 'Estimated proportions of constituent cell types.')
+```
+### <a id = "PlotDeconvMethylFun"> </a> Function2: PlotDeconvMethylFun
+```{r}
+?PlotDeconvMethylFun
+```
+```{r}
+# Running the function
+print(
+PlotDeconvMethylFun(Methylation.Sample,Reference.Methylation.Markers,Reference.Methylation.CellTypes,stage1_result_ct,Reference.CellTypes.Names)
+)
+dev.off()
+```
+### <a id = "ProbeToGeneFun"> </a> Function3: ProbeToGeneFun
+```{r}
+?ProbeToGeneFun
+# Running the function
+Deconv_methylation <- stage1_result_ct$methylation
+Deconv_meth_gene <-
+  ProbeToGeneFun(Annotation450K,Deconv_methylation,"450K")
+# Output
+knitr::kable(Deconv_meth_gene[1:5,], caption = 'An R dataframe object with deconvoluted DNA methylation values for each gene in cell types. The rows are the genes and the columns are the cell types. This function labels the columns as V1, V2, V3,....etc.')
+```
+### <a id = "SampleMethylFun"> </a> Function4: SampleMethylFun
+```{r}
+?SampleMethylFun
+# Running the function
+CTDDirectory <- tempdir()
+SampleMethylFun(Deconv_meth_gene,Deconv_proportions, CTDDirectory)
+# Output
+load("~/Sample_methylation/TCGA-OR-A5J1-01A.Rda")
+knitr::kable(methylation[1:5,], caption = 'Deconvoluted DNA methylation profile of the sample TCGA-OR-A5J1-01A')
+```
+
+## <a id = "Step-2"> </a> Step 2: Computing sample-specific deconvoluted expression profile.
+
+### <a id = "RunDeconvExprFun"> </a> Function1: RunDeconvExprFun
+```{r}
+?RunDeconvExprFun
+# Running the function
+Deconv_expression<-RunDeconvExprFun(Expression.Sample,Deconv_proportions)
+# Output
+knitr::kable(Deconv_expression[1:5,], caption = 'An R dataframe object with deconvoluted gene expression values for each gene in cell types. The rows are the genes and the columns are the cell types. This function labels the columns as V1, V2, V3,....etc.')
+```
+### <a id = "SampleExprFun"> </a> Function2: SampleExprFun
+```{r}
+?SampleExprFun
+# Running the function
+SampleExprFun(Deconv_expression,Deconv_proportions, CTDDirectory)
+# Output
+load("~/Sample_expression/TCGA-OR-A5J1-01A.Rda")
+knitr::kable(expression[1:5,], caption = 'Deconvoluted gene expression profile of the sample TCGA-OR-A5J1-01A')
+```
+
+## <a id = "Step-3"> </a> Step 3: Computing sample and cell line-specific differentially expressed (DE) genes and enriched biological pathways.
+
+### <a id = "GetSampleDEFun"> </a> Function1: GetSampleDEFun
+```{r}
+?GetSampleDEFun
+# Running the function
+CTDDirectory <- tempdir()
+GetSampleDEFun(RnaSeq_data=Expression.Sample,parallel= TRUE,ncores=2, CTDDirectory)
+# Output
+load(paste0(CTDDirectory,"/Patient_DE_genes/DE_Gene/TCGA-OR-A5J6-01A_pat_de_genes.Rda"))
+knitr::kable(pat_de_genes, caption = 'DE genes of the sample TCGA-OR-A5J1-01A')
+```
+### <a id = "GetCellLineDEFun"> </a> Function2: GetCellLineDEFun
+```{r}
+?GetCellLineDEFun
+# Running the function
+GetCellLineDEFun(RnaSeq_data=Expression.CellLine,parallel= TRUE,ncores=2, CTDDirectory)
+# Output
+load(paste0(CTDDirectory,"/CellLine_DE_genes/DE_Gene/LK2_LUNG_cell_de_genes.Rda"))
+knitr::kable(cell_de_genes[1:5,,drop=F], caption = 'DE genes of the LK2 lung cancer cell line')
+```
+### <a id = "GetPathFun"> </a> Function3: GetPathFun
+```{r}
+?GetPathFun
+# Running the function
+data("CTDPathSim2")
+Enriched.pathways.sample<-GetPathFun(CancerGeneList,pat_de_genes)
+Enriched.pathways.cellLine<-GetPathFun(CancerGeneList,cell_de_genes)
+# Output
+knitr::kable(Enriched.pathways.sample[1:5,], caption = 'Sample(TCGA-OR-A5J1-01A)-specific enriched biological pathways')
+knitr::kable(Enriched.pathways.cellLine[1:5,], caption = 'Cell line(LK2)-specific enriched biological pathways')
+
+```
+## <a id = "Step-4"> </a> Step 4: Computing sample and cell line-specific differentially methylated (DM) and differentially aberrated (DA) genes.
+
+### <a id = "GetSampleDMFun"> </a> Function1: GetSampleDMFun
+```{r}
+?GetSampleDMFun
+# Running the function
+GetSampleDMFun(GeneCentric.DNAmethylation.Sample,parallel= TRUE,ncores=2, CTDDirectory)
+# Output
+load(paste0(CTDDirectory,"/Patient_DM_genes/DM_Gene/TCGA-OR-A5J6-01A_pat_dm_genes.Rda"))
+knitr::kable(pat_dm_genes, caption = 'DM genes of the sample TCGA-OR-A5J1-01A')
+```
+### <a id = "GetCellLineDMFun"> </a> Function2: GetCellLineDMFun
+```{r}
+?GetCellLineDMFun
+# Running the function
+GetCellLineDMFun(GeneCentric.DNAmethylation.CellLine,parallel= TRUE,ncores=2, CTDDirectory)
+# Output
+load(paste0(CTDDirectory,"/CellLine_DM_genes/DM_Gene/LK2_LUNG_cell_dm_genes.Rda"))
+knitr::kable(cell_dm_genes[1:5,], caption = 'DM genes of the LK2 cell line')
+```
+### <a id = "GetCellLineDAFun"> </a> Function3: GetCellLineDAFun
+```{r}
+?GetCellLineDAFun
+# Running the function
+GetCellLineDAFun(CNV.CellLine,ncores=2, CTDDirectory)
+# Output
+load(paste0(CTDDirectory,"/CellLine_DA_genes/DA_Gene/LK2_LUNG_cell_dm_genes.Rda"))
+knitr::kable(cell_da_genes[1:2,], caption = 'DA genes of the LK2 lung cancer cell line')
+```
+Computing sample-specific DA genes: To compute sample-specific DA genes, users need to compute highly amplified and deleted genes utilizing chromosomal copy number profiles of each cancer type cohort as inputs in the GISTIC 2.0 tool in GenePattern web server (https://www.genepattern.org/) using a confidence interval of 0.90. They should select the genes that exceed the high-level GISTIC thresholds for amplification and deletions as 2 and -2, respectively as DA genes. 
+
+## <a id = "Step-5"> </a> Step 5: Computing sample-cell line pathway activity-based similarity score.
+
+### <a id = "FindSimFun"> </a> Function1: FindSimFun
+```{r}
+?FindSimFun
+# Running the function to compute DNA methylation based Spearman similarity score of a patient-cell line pair
+data("CTDPathSim2")
+x<-FindSimFun(pat_dm_genes,pat_reactome,Deconv_meth_gene,cell_dm_genes,cell_reactome,ccle_methylation)
+knitr::kable(x, caption = 'DNA methylation based Spearman similarity score of a patient-cell line pair')
+# Running the function to compute gene expression-based Spearman similarity score of a patient-cell line pair
+y<-FindSimFun(pat_de_genes,pat_reactome,Deconv_expression,cell_de_genes,cell_reactome,ccle_expr)
+knitr::kable(y, caption = 'Gene expression-based Spearman similarity score of a patient-cell line pair')
+# Running the function to compute copy number value based Spearman similarity score of a patient-cell line pair
+z<-FindSimFun(pat_da_genes,pat_reactome,pat_cnv,cell_da_genes,cell_reactome,ccle_cnv)
+knitr::kable(z, caption = 'Copy number aberration-based Spearman similarity score of a patient-cell line pair')
+```
+For CTDPathSim2.0, after computing the three different scores for all the sample-cell line pairs, the users need to scale the Spearman similarities to the range of 0 to 1 using min-max normalization and should compute an average similarity score taking a mean of expression-based score, DNA methylation-based score, and copy number-based score for each sample-cell line pair.
+
+For CTDPathSim1.0, the users should perform the above step with only expression-based score and DNA methylation-based score.
